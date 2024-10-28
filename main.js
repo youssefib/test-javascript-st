@@ -1,48 +1,47 @@
 function assignTasksWithPriorityAndDependencies(developers, tasks) {
-    // Track assigned tasks, developer workloads, and completed tasks
+    // Sort tasks by dependency count to ensure dependency order is respected
+    tasks.sort((a, b) => a.dependencies.length - b.dependencies.length);
+  
+    // Track assigned tasks and developer workload
     const assignedTasks = {};
     const completedTasks = new Set();
     const unassignedTasks = [];
   
-    // Initialize developers' workload records
-    developers.forEach(dev => {
-      assignedTasks[dev.name] = { tasks: [], totalHours: 0 };
-    });
-  
     tasks.forEach(task => {
-      // Check if all dependencies are completed before assigning the task
+      // Check if all dependencies are met
       const dependenciesMet = task.dependencies.every(dep => completedTasks.has(dep));
       if (!dependenciesMet) {
         unassignedTasks.push(task);
         return;
       }
   
-      // Attempt to assign the task to an available developer
+      // Try to assign task to a suitable developer
       let assigned = false;
       for (const dev of developers) {
-        const devTasks = assignedTasks[dev.name];
+        const devTasks = assignedTasks[dev.name] || { tasks: [], totalHours: 0 };
   
-        // Check if the developer has the required skill level and enough available hours
-        if (dev.skillLevel >= task.difficulty && devTasks.totalHours + task.hoursRequired <= dev.maxHours) {
+        // Check skill and available hours
+        if (dev.skillLevel >= task.difficulty && (devTasks.totalHours + task.hoursRequired <= dev.maxHours)) {
           devTasks.tasks.push(task.taskName);
           devTasks.totalHours += task.hoursRequired;
+          assignedTasks[dev.name] = devTasks;
           completedTasks.add(task.taskName);
           assigned = true;
           break;
         }
       }
   
-      // If no developer could take the task, add it to unassigned tasks
+      // If no developer could handle this task, mark it as unassigned
       if (!assigned) {
         unassignedTasks.push(task);
       }
     });
   
-    // Format the final result for each developer
+    // Format the result as required
     const result = developers.map(dev => ({
       name: dev.name,
-      tasks: assignedTasks[dev.name].tasks,
-      totalHours: assignedTasks[dev.name].totalHours
+      tasks: assignedTasks[dev.name]?.tasks || [],
+      totalHours: assignedTasks[dev.name]?.totalHours || 0
     }));
   
     return {
@@ -50,6 +49,8 @@ function assignTasksWithPriorityAndDependencies(developers, tasks) {
       unassignedTasks: unassignedTasks.map(task => task.taskName)
     };
   }
+  
+  
   
   // Example usage
   const developers = [
